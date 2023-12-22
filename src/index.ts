@@ -14,13 +14,9 @@ const httpServer = http.createServer(function (request: any, response: any) {
 const userManager = new UserManager();
 const store = new InMemoryStore();
 
-httpServer.listen(8080, function () {
-    console.log((new Date()) + ' Server is listening on port 8080');
-});
 
 const wsServer = new WebSocketServer({
     httpServer: httpServer,
-
     autoAcceptConnections: false
 });
 
@@ -29,7 +25,11 @@ function originIsAllowed(origin: string) {
     return true;
 }
 
+
+
 wsServer.on('request', function (request) {
+    // console.log("inside connect")
+    // console.log(request);
     if (!originIsAllowed(request.origin)) {
         // Make sure we only accept requests from an allowed origin
         request.reject();
@@ -41,14 +41,14 @@ wsServer.on('request', function (request) {
     console.log((new Date()) + ' Connection accepted.');
     connection.on('message', function (message) {
         //Todos add rate limiting logic here
+        console.log(message);
         if (message.type === 'utf8') {
             try {
                 messageHandler(connection, JSON.parse(message.utf8Data))
             } catch (err) {
 
             }
-            console.log('Received Message: ' + message.utf8Data);
-            // connection.sendUTF(message.utf8Data);
+            // console.log('Received Message: ' + message.utf8Data);
         }
 
     });
@@ -58,13 +58,17 @@ wsServer.on('request', function (request) {
 });
 
 function messageHandler(ws: connection, message: IncomingMessage) {
+    console.log("Incoming Message ", JSON.stringify(message));
     if (message.type == SupportMessage.JoinRoom) {
+
         const payload = message.payload;
         userManager.addUser(payload.userId, payload.roomId, ws, payload.name)
+        console.log("User added")
     }
     if (message.type == SupportMessage.SendMessage) {
         const payload = message.payload;
-        const user = userManager.getUser(payload.userId, payload.message);
+        const user = userManager.getUser(payload.userId, payload.roomId);
+        // console.log(user);
         if (!user) {
             console.error("user is not found in the DB");
             return;
@@ -108,3 +112,6 @@ function messageHandler(ws: connection, message: IncomingMessage) {
 }
 
 
+httpServer.listen(8080, function () {
+    console.log((new Date()) + ' Server is listening on port 8080');
+});
